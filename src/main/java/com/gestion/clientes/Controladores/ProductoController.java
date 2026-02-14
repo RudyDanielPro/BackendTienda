@@ -2,8 +2,10 @@ package com.gestion.clientes.Controladores;
 
 import com.gestion.clientes.Entidades.Producto;
 import com.gestion.clientes.Entidades.ProductoFoto;
+import com.gestion.clientes.Entidades.ProductoTalla;
 import com.gestion.clientes.Repositorios.ProductoRepository;
-import com.gestion.clientes.Servicios.CloudinaryService; 
+import com.gestion.clientes.Servicios.CloudinaryService;
+import com.gestion.clientes.Servicios.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,9 @@ public class ProductoController {
 
     @Autowired
     private CloudinaryService cloudinaryService;
+
+    @Autowired
+    private EmailService emailService;
 
     // ============================================
     // 1. OBTENER TODOS LOS PRODUCTOS
@@ -147,5 +152,76 @@ public class ProductoController {
         } catch (Exception e) {
             return new ResponseEntity<>(Map.of("error", "Error general: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // ============================================
+    // 6. NOTIFICAR COMPRA (ENVÍA EL CORREO AL ADMIN)
+    // ============================================
+    @PostMapping("/productos/notificar-compra")
+    public ResponseEntity<?> notificarCompra(@RequestBody List<Map<String, Object>> carrito) {
+        try {
+            StringBuilder listaProd = new StringBuilder();
+            StringBuilder links = new StringBuilder();
+            
+            // URL base de tu backend (Cambiar cuando subas a producción)
+            String baseUrl = "http://localhost:8080"; 
+
+            for (Map<String, Object> item : carrito) {
+                Map<String, Object> prod = (Map<String, Object>) item.get("product");
+                
+                Long idProd = Long.parseLong(prod.get("id").toString());
+                String nombre = (String) prod.get("nombre");
+                String talla = (String) item.get("selectedSize");
+
+                listaProd.append("- ").append(nombre).append(" (Talla: ").append(talla).append(")\n");
+                
+                // Generamos el link que el admin clickeará para descontar 1 unidad
+                String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + talla + "&cantidad=1";
+                
+                links.append("👉 Descontar 1 unid. de ").append(nombre).append(" (").append(talla).append("):\n")
+                     .append(linkDeduccion).append("\n\n");
+            }
+
+            emailService.enviarNotificacionAdmin(listaProd.toString(), links.toString());
+            
+            return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
+        } catch (Exception e) {
+            return new ResponseEntity<>(Map.of("error", "Error al procesar la notificación: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ============================================
+    // 7. DESCONTAR STOCK (AL HACER CLIC EN EL CORREO)
+    // ============================================
+    @GetMapping("/admin/productos/descontar-stock")
+    public ResponseEntity<String> descontarStock(
+            @RequestParam Long productoId, 
+            @RequestParam String talla, 
+            @RequestParam Integer cantidad) {
+        
+        Optional<Producto> optProd = productoRepository.findById(productoId);
+        
+        if (optProd.isPresent()) {
+            Producto producto = optProd.get();
+            boolean modificado = false;
+            
+            for (ProductoTalla pt : producto.getTallas()) {
+                if (pt.getTalla().equalsIgnoreCase(talla)) {
+                    int nuevoStock = pt.getStock() - cantidad;
+                    pt.setStock(Math.max(0, nuevoStock)); // Evita stock negativo
+                    modificado = true;
+                    break;
+                }
+            }
+            
+            if (modificado) {
+                productoRepository.save(producto);
+                return ResponseEntity.ok("✅ Stock descontado exitosamente. Producto: " + producto.getNombre() + " | Talla: " + talla);
+            } else {
+                return ResponseEntity.badRequest().body("❌ Talla no encontrada en el producto.");
+            }
+        }
+        
+        return ResponseEntity.notFound().build();
     }
 }
