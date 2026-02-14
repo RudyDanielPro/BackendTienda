@@ -14,6 +14,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @RestController
@@ -155,7 +157,7 @@ public class ProductoController {
     }
 
     // ============================================
-    // 6. NOTIFICAR COMPRA (ENVÍA EL CORREO AL ADMIN)
+    // 6. NOTIFICAR COMPRA (CORREGIDO: Encoding + HTML Links)
     // ============================================
     @PostMapping("/productos/notificar-compra")
     public ResponseEntity<?> notificarCompra(@RequestBody List<Map<String, Object>> carrito) {
@@ -163,36 +165,42 @@ public class ProductoController {
             StringBuilder listaProd = new StringBuilder();
             StringBuilder links = new StringBuilder();
             
-            // URL base de tu backend para los links de deducción
+            // URL base de tu backend
             String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
-                // CORRECCIÓN: Ahora leemos los datos directamente del objeto recibido
                 Long idProd = Long.parseLong(item.get("id").toString());
                 String nombre = (String) item.get("nombre");
                 String talla = (String) item.get("tallaSeleccionada");
 
+                // --- CORRECCIÓN CLAVE: Codificar la talla para URL ---
+                // Esto convierte espacios en %20, evitando enlaces rotos
+                String tallaEncoded = URLEncoder.encode(talla, StandardCharsets.UTF_8);
+
                 listaProd.append("- ").append(nombre).append(" (Talla: ").append(talla).append(")\n");
                 
-                // Generamos el link que el admin clickeará para descontar 1 unidad
-                String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + talla + "&cantidad=1";
+                // Generamos la URL segura
+                String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + tallaEncoded + "&cantidad=1";
                 
-                links.append("👉 Descontar 1 unid. de ").append(nombre).append(" (").append(talla).append("):\n")
-                     .append(linkDeduccion).append("\n\n");
+                // Generamos un Link HTML bonito y clickeable
+                links.append("<div style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>")
+                     .append("<p><strong>Producto:</strong> ").append(nombre).append(" | <strong>Talla:</strong> ").append(talla).append("</p>")
+                     .append("<a href='").append(linkDeduccion).append("' style='background-color: #d9534f; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;'>")
+                     .append("🔻 Descontar 1 unidad</a>")
+                     .append("</div>");
             }
 
             emailService.enviarNotificacionAdmin(listaProd.toString(), links.toString());
             
             return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
         } catch (Exception e) {
-            // Imprimimos el error en los logs de Render para depuración
             e.printStackTrace();
             return new ResponseEntity<>(Map.of("error", "Error al procesar la notificación: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     // ============================================
-    // 7. DESCONTAR STOCK (AL HACER CLIC EN EL CORREO)
+    // 7. DESCONTAR STOCK (CORREGIDO: Comparación robusta + Respuesta HTML)
     // ============================================
     @GetMapping("/admin/productos/descontar-stock")
     public ResponseEntity<String> descontarStock(
@@ -206,8 +214,12 @@ public class ProductoController {
             Producto producto = optProd.get();
             boolean modificado = false;
             
+            // Limpiamos la talla buscada de espacios accidentales
+            String tallaBuscada = talla.trim();
+            
             for (ProductoTalla pt : producto.getTallas()) {
-                if (pt.getTalla().equalsIgnoreCase(talla)) {
+                // --- CORRECCIÓN CLAVE: Usar trim() e ignoreCase ---
+                if (pt.getTalla().trim().equalsIgnoreCase(tallaBuscada)) {
                     int nuevoStock = pt.getStock() - cantidad;
                     pt.setStock(Math.max(0, nuevoStock)); // Evita stock negativo
                     modificado = true;
@@ -217,9 +229,25 @@ public class ProductoController {
             
             if (modificado) {
                 productoRepository.save(producto);
-                return ResponseEntity.ok("✅ Stock descontado exitosamente. Producto: " + producto.getNombre() + " | Talla: " + talla);
+                
+                // Devolvemos HTML visual agradable en lugar de texto plano
+                String htmlResponse = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
+                        + "<h1 style='color: green; font-size: 50px;'>✅</h1>"
+                        + "<h2>Stock actualizado correctamente</h2>"
+                        + "<p>Se descontó <strong>" + cantidad + "</strong> unidad(es) de:</p>"
+                        + "<h3>" + producto.getNombre() + " (Talla: " + tallaBuscada + ")</h3>"
+                        + "<button onclick='window.close()' style='padding: 10px 20px; cursor: pointer;'>Cerrar ventana</button>"
+                        + "</body></html>";
+                
+                return ResponseEntity.ok(htmlResponse);
             } else {
-                return ResponseEntity.badRequest().body("❌ Talla no encontrada en el producto.");
+                String htmlError = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
+                        + "<h1 style='color: red; font-size: 50px;'>❌</h1>"
+                        + "<h2>Error: Talla no encontrada</h2>"
+                        + "<p>Buscábamos la talla: <strong>'" + tallaBuscada + "'</strong></p>"
+                        + "<p>Pero no existe en el producto: " + producto.getNombre() + "</p>"
+                        + "</body></html>";
+                return ResponseEntity.badRequest().body(htmlError);
             }
         }
         
