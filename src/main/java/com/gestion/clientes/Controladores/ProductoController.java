@@ -163,15 +163,14 @@ public class ProductoController {
             StringBuilder listaProd = new StringBuilder();
             StringBuilder links = new StringBuilder();
             
-            // URL base de tu backend (Usando la URL de Render para que los links funcionen en móviles)
+            // URL base de tu backend para los links de deducción
             String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
-                Map<String, Object> prod = (Map<String, Object>) item.get("product");
-                
-                Long idProd = Long.parseLong(prod.get("id").toString());
-                String nombre = (String) prod.get("nombre");
-                String talla = (String) item.get("selectedSize");
+                // CORRECCIÓN: Ahora leemos los datos directamente del objeto recibido
+                Long idProd = Long.parseLong(item.get("id").toString());
+                String nombre = (String) item.get("nombre");
+                String talla = (String) item.get("tallaSeleccionada");
 
                 listaProd.append("- ").append(nombre).append(" (Talla: ").append(talla).append(")\n");
                 
@@ -186,6 +185,8 @@ public class ProductoController {
             
             return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
         } catch (Exception e) {
+            // Imprimimos el error en los logs de Render para depuración
+            e.printStackTrace();
             return new ResponseEntity<>(Map.of("error", "Error al procesar la notificación: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
