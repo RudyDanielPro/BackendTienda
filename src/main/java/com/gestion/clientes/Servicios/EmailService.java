@@ -13,7 +13,7 @@ public class EmailService {
 
     public void enviarNotificacionAdmin(String listaProd, String links) {
         SimpleMailMessage email = new SimpleMailMessage();
-        email.setTo("rudydanielcarballo@gmail.com"); // TU CORREO
+        email.setTo("rudydaniel050526@gmail.com"); // TU CORREO
         email.setSubject("🛍️ Nuevo Pedido - Confirmación de Stock Requerida");
         email.setText("Hola Admin,\n\nSe ha iniciado un pedido por WhatsApp.\n\n" +
                       "PRODUCTOS:\n" + listaProd + "\n\n" +

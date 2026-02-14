@@ -7,7 +7,6 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:anyelin}
     driver-class-name: org.postgresql.Driver
-    
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -24,6 +23,18 @@ spring:
         format_sql: true
     show-sql: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: rudydaniel050526@gmail.com
+    password: ${MAIL_PASSWORD:xkuvpwmffdjkvfcm}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   servlet:
     multipart:
       max-file-size: 10MB
@@ -31,5 +42,6 @@ spring:
 
 server:
   port: 8080
+
 uploads:
   directory: uploads
