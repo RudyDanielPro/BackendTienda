@@ -3,7 +3,7 @@ spring:
     name: gestion-clientes-backend
   
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/gestion_clientes}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gestion_clientes_spring_boot}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:anyelin}
     driver-class-name: org.postgresql.Driver
