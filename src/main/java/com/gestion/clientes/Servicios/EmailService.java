@@ -18,7 +18,7 @@ public class EmailService {
         // Se cambió .htmlContent() por .html()
         CreateEmailOptions params = CreateEmailOptions.builder()
                 .from("onboarding@resend.dev") 
-                .to("rudydanielcarballo@gmail.com")
+                .to("sadysanchez1980@gmail.com")
                 .subject("🛍️ Nuevo Pedido - Confirmación de Stock Requerida")
                 .html("<h3>Hola Admin,</h3>" +
                     "<p>Se ha iniciado un pedido por WhatsApp.</p>" +
