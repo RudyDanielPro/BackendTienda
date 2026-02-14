@@ -163,8 +163,8 @@ public class ProductoController {
             StringBuilder listaProd = new StringBuilder();
             StringBuilder links = new StringBuilder();
             
-            // URL base de tu backend (Cambiar cuando subas a producción)
-            String baseUrl = "http://localhost:8080"; 
+            // URL base de tu backend (Usando la URL de Render para que los links funcionen en móviles)
+            String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
                 Map<String, Object> prod = (Map<String, Object>) item.get("product");
