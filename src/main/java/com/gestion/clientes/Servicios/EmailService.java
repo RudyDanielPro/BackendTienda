@@ -1,30 +1,38 @@
 package com.gestion.clientes.Servicios;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import com.resend.Resend;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    @Value("${resend.api.key}")
+    private String resendApiKey;
 
     public void enviarNotificacionAdmin(String listaProd, String links) {
-        SimpleMailMessage email = new SimpleMailMessage();
-        
-        // -----------------------------------------------------------
-        // CAMBIO AQUÍ: Pon el correo de la persona que debe RECIBIR el aviso
-        // No pongas el mismo correo desde el que se envía.
-        // -----------------------------------------------------------
-        email.setTo("rudydanielcarballo@gmail.com"); 
-        
-        email.setSubject("🛍️ Nuevo Pedido - Confirmación de Stock Requerida");
-        email.setText("Hola Admin,\n\nSe ha iniciado un pedido por WhatsApp.\n\n" +
-                      "PRODUCTOS:\n" + listaProd + "\n\n" +
-                      "⚠️ PARA DESCONTAR EL STOCK DE ESTA VENTA, HAZ CLIC EN LOS LINKS:\n\n" + links);
-        
-        mailSender.send(email);
+        Resend resend = new Resend(resendApiKey);
+
+        // Se cambió .htmlContent() por .html()
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from("onboarding@resend.dev") 
+                .to("rudydanielcarballo@gmail.com")
+                .subject("🛍️ Nuevo Pedido - Confirmación de Stock Requerida")
+                .html("<h3>Hola Admin,</h3>" +
+                    "<p>Se ha iniciado un pedido por WhatsApp.</p>" +
+                    "<strong>PRODUCTOS:</strong><br><pre>" + listaProd + "</pre><br>" +
+                    "<strong>⚠️ PARA DESCONTAR EL STOCK:</strong><br>" + 
+                    links.replace("\n", "<br>"))
+                .build();
+
+        try {
+            CreateEmailResponse data = resend.emails().send(params);
+            System.out.println("✅ Correo enviado con éxito. ID: " + data.getId());
+        } catch (Exception e) {
+            System.err.println("❌ Error al enviar con Resend: " + e.getMessage());
+            throw new RuntimeException("Error en el servicio de correo");
+        }
     }
 }
