@@ -1,5 +1,6 @@
 package com.gestion.clientes.Config;
 
+import org.springframework.beans.factory.annotation.Value; // Importante: Importar @Value
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +17,14 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    // Inyectamos el usuario desde application.yml (que a su vez viene de Render)
+    @Value("${security.admin.username}")
+    private String adminUsername;
+
+    // Inyectamos la contraseña desde application.yml
+    @Value("${security.admin.password}")
+    private String adminPassword;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -50,8 +59,10 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails admin = User.withUsername("admin")
-                .password("{noop}admin123")
+        // AQUI ESTÁ LA PROTECCIÓN:
+        // Usamos las variables inyectadas en lugar de escribir el texto fijo
+        UserDetails admin = User.withUsername(adminUsername)
+                .password("{noop}" + adminPassword) // Concatenamos {noop} a la contraseña que venga de Render
                 .roles("ADMIN")
                 .build();
         return new InMemoryUserDetailsManager(admin);
