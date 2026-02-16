@@ -12,14 +12,14 @@ public class EmailService {
     @Value("${resend.api.key}")
     private String resendApiKey;
 
-    public void enviarNotificacionAdmin(String listaProd, String links) {
+    // Se agrega el parámetro 'String asunto' para permitir títulos dinámicos
+    public void enviarNotificacionAdmin(String asunto, String listaProd, String links) {
         Resend resend = new Resend(resendApiKey);
 
-        // Se cambió .htmlContent() por .html()
         CreateEmailOptions params = CreateEmailOptions.builder()
                 .from("onboarding@resend.dev") 
                 .to("sadysanchez1980@gmail.com")
-                .subject("🛍️ Nuevo Pedido - Confirmación de Stock Requerida")
+                .subject(asunto) // Ahora usa el asunto generado dinámicamente
                 .html("<h3>Hola Admin,</h3>" +
                     "<p>Se ha iniciado un pedido por WhatsApp.</p>" +
                     "<strong>PRODUCTOS:</strong><br><pre>" + listaProd + "</pre><br>" +
