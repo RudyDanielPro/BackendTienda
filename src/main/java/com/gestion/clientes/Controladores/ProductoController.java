@@ -52,12 +52,12 @@ public class ProductoController {
             producto.setColor((String) payload.get("color"));
             producto.setCategoria((String) payload.get("categoria"));
             
-            // --- NUEVO ---
+            // --- MANEJO DE DESCRIPCIÓN ---
             if (payload.get("descripcion") != null) {
                 producto.setDescripcion((String) payload.get("descripcion"));
             }
-            // -------------
 
+            // --- MANEJO DE TALLAS ---
             if (payload.get("tallas") != null) {
                 List<Map<String, Object>> tallasReq = (List<Map<String, Object>>) payload.get("tallas");
                 for (Map<String, Object> t : tallasReq) {
@@ -85,12 +85,12 @@ public class ProductoController {
             p.setColor((String) payload.get("color"));
             p.setCategoria((String) payload.get("categoria"));
             
-            // --- NUEVO ---
+            // --- ACTUALIZAR DESCRIPCIÓN ---
             if (payload.get("descripcion") != null) {
                 p.setDescripcion((String) payload.get("descripcion"));
             }
-            // -------------
             
+            // --- ACTUALIZAR TALLAS (Limpiar y recargar) ---
             p.getTallas().clear();
             if (payload.get("tallas") != null) {
                 List<Map<String, Object>> tallasReq = (List<Map<String, Object>>) payload.get("tallas");
@@ -195,7 +195,6 @@ public class ProductoController {
             
             return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
         } catch (Exception e) {
-            e.printStackTrace();
             return new ResponseEntity<>(Map.of("error", "Error al procesar la notificación: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -214,7 +213,6 @@ public class ProductoController {
         if (optProd.isPresent()) {
             Producto producto = optProd.get();
             boolean modificado = false;
-            
             String tallaBuscada = talla.trim();
             
             for (ProductoTalla pt : producto.getTallas()) {
@@ -242,8 +240,6 @@ public class ProductoController {
                 String htmlError = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
                         + "<h1 style='color: red; font-size: 50px;'>❌</h1>"
                         + "<h2>Error: Talla no encontrada</h2>"
-                        + "<p>Buscábamos la talla: <strong>'" + tallaBuscada + "'</strong></p>"
-                        + "<p>Pero no existe en el producto: " + producto.getNombre() + "</p>"
                         + "</body></html>";
                 return ResponseEntity.badRequest().body(htmlError);
             }
