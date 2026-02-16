@@ -26,6 +26,10 @@ public class Producto {
     @Column(length = 255)
     private String categoria;
 
+    // --- Único cambio: campo descripción ---
+    @Column(length = 1000)
+    private String descripcion;
+
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<ProductoTalla> tallas = new ArrayList<>();
@@ -68,6 +72,11 @@ public class Producto {
     public void setColor(String color) { this.color = color; }
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    // --- Único cambio: Getter y Setter de descripción ---
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+
     public List<ProductoTalla> getTallas() { return tallas; }
     public void setTallas(List<ProductoTalla> tallas) { 
         this.tallas.clear();

@@ -51,6 +51,12 @@ public class ProductoController {
             producto.setPrecio(new BigDecimal(payload.get("precio").toString()));
             producto.setColor((String) payload.get("color"));
             producto.setCategoria((String) payload.get("categoria"));
+            
+            // --- NUEVO ---
+            if (payload.get("descripcion") != null) {
+                producto.setDescripcion((String) payload.get("descripcion"));
+            }
+            // -------------
 
             if (payload.get("tallas") != null) {
                 List<Map<String, Object>> tallasReq = (List<Map<String, Object>>) payload.get("tallas");
@@ -78,6 +84,12 @@ public class ProductoController {
             p.setPrecio(new BigDecimal(payload.get("precio").toString()));
             p.setColor((String) payload.get("color"));
             p.setCategoria((String) payload.get("categoria"));
+            
+            // --- NUEVO ---
+            if (payload.get("descripcion") != null) {
+                p.setDescripcion((String) payload.get("descripcion"));
+            }
+            // -------------
             
             p.getTallas().clear();
             if (payload.get("tallas") != null) {
@@ -112,7 +124,6 @@ public class ProductoController {
             @RequestParam("archivo") MultipartFile archivo) {
 
         try {
-            // 1. Verificar si el producto existe
             Optional<Producto> productoOpt = productoRepository.findById(id);
             if (productoOpt.isEmpty()) {
                 return new ResponseEntity<>(Map.of("error", "Producto no encontrado"), HttpStatus.NOT_FOUND);
@@ -122,13 +133,9 @@ public class ProductoController {
                 return new ResponseEntity<>(Map.of("error", "El archivo está vacío"), HttpStatus.BAD_REQUEST);
             }
 
-            // 2. Subir a Cloudinary
             Map<?, ?> result = cloudinaryService.upload(archivo);
-            
-            // 3. Obtener la URL segura (HTTPS)
             String urlImagen = (String) result.get("secure_url");
 
-            // 4. Guardar o actualizar la foto en el producto
             Producto producto = productoOpt.get();
             ProductoFoto foto = producto.getFoto();
             
@@ -136,13 +143,12 @@ public class ProductoController {
                 foto = new ProductoFoto();
             }
             
-            foto.setRuta(urlImagen); // Guardamos la URL completa
+            foto.setRuta(urlImagen); 
             foto.setNombreArchivo(archivo.getOriginalFilename());
             
             producto.setFoto(foto);
             productoRepository.save(producto);
 
-            // 5. Respuesta
             return new ResponseEntity<>(Map.of(
                 "mensaje", "Foto subida con éxito",
                 "url", urlImagen,
@@ -157,7 +163,7 @@ public class ProductoController {
     }
 
     // ============================================
-    // 6. NOTIFICAR COMPRA (CORREGIDO: Encoding + HTML Links)
+    // 6. NOTIFICAR COMPRA 
     // ============================================
     @PostMapping("/productos/notificar-compra")
     public ResponseEntity<?> notificarCompra(@RequestBody List<Map<String, Object>> carrito) {
@@ -165,7 +171,6 @@ public class ProductoController {
             StringBuilder listaProd = new StringBuilder();
             StringBuilder links = new StringBuilder();
             
-            // URL base de tu backend
             String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
@@ -173,16 +178,12 @@ public class ProductoController {
                 String nombre = (String) item.get("nombre");
                 String talla = (String) item.get("tallaSeleccionada");
 
-                // --- CORRECCIÓN CLAVE: Codificar la talla para URL ---
-                // Esto convierte espacios en %20, evitando enlaces rotos
                 String tallaEncoded = URLEncoder.encode(talla, StandardCharsets.UTF_8);
 
                 listaProd.append("- ").append(nombre).append(" (Talla: ").append(talla).append(")\n");
                 
-                // Generamos la URL segura
                 String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + tallaEncoded + "&cantidad=1";
                 
-                // Generamos un Link HTML bonito y clickeable
                 links.append("<div style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>")
                      .append("<p><strong>Producto:</strong> ").append(nombre).append(" | <strong>Talla:</strong> ").append(talla).append("</p>")
                      .append("<a href='").append(linkDeduccion).append("' style='background-color: #d9534f; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;'>")
@@ -200,7 +201,7 @@ public class ProductoController {
     }
 
     // ============================================
-    // 7. DESCONTAR STOCK (CORREGIDO: Comparación robusta + Respuesta HTML)
+    // 7. DESCONTAR STOCK
     // ============================================
     @GetMapping("/admin/productos/descontar-stock")
     public ResponseEntity<String> descontarStock(
@@ -214,14 +215,12 @@ public class ProductoController {
             Producto producto = optProd.get();
             boolean modificado = false;
             
-            // Limpiamos la talla buscada de espacios accidentales
             String tallaBuscada = talla.trim();
             
             for (ProductoTalla pt : producto.getTallas()) {
-                // --- CORRECCIÓN CLAVE: Usar trim() e ignoreCase ---
                 if (pt.getTalla().trim().equalsIgnoreCase(tallaBuscada)) {
                     int nuevoStock = pt.getStock() - cantidad;
-                    pt.setStock(Math.max(0, nuevoStock)); // Evita stock negativo
+                    pt.setStock(Math.max(0, nuevoStock)); 
                     modificado = true;
                     break;
                 }
@@ -230,7 +229,6 @@ public class ProductoController {
             if (modificado) {
                 productoRepository.save(producto);
                 
-                // Devolvemos HTML visual agradable en lugar de texto plano
                 String htmlResponse = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
                         + "<h1 style='color: green; font-size: 50px;'>✅</h1>"
                         + "<h2>Stock actualizado correctamente</h2>"
