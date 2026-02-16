@@ -52,12 +52,10 @@ public class ProductoController {
             producto.setColor((String) payload.get("color"));
             producto.setCategoria((String) payload.get("categoria"));
             
-            // --- MANEJO DE DESCRIPCIÓN ---
             if (payload.get("descripcion") != null) {
                 producto.setDescripcion((String) payload.get("descripcion"));
             }
 
-            // --- MANEJO DE TALLAS ---
             if (payload.get("tallas") != null) {
                 List<Map<String, Object>> tallasReq = (List<Map<String, Object>>) payload.get("tallas");
                 for (Map<String, Object> t : tallasReq) {
@@ -85,12 +83,10 @@ public class ProductoController {
             p.setColor((String) payload.get("color"));
             p.setCategoria((String) payload.get("categoria"));
             
-            // --- ACTUALIZAR DESCRIPCIÓN ---
             if (payload.get("descripcion") != null) {
                 p.setDescripcion((String) payload.get("descripcion"));
             }
             
-            // --- ACTUALIZAR TALLAS (Limpiar y recargar) ---
             p.getTallas().clear();
             if (payload.get("tallas") != null) {
                 List<Map<String, Object>> tallasReq = (List<Map<String, Object>>) payload.get("tallas");
@@ -163,31 +159,38 @@ public class ProductoController {
     }
 
     // ============================================
-    // 6. NOTIFICAR COMPRA 
+    // 6. NOTIFICAR COMPRA (CORREGIDO PARA CANTIDADES)
     // ============================================
     @PostMapping("/productos/notificar-compra")
     public ResponseEntity<?> notificarCompra(@RequestBody List<Map<String, Object>> carrito) {
         try {
             StringBuilder listaProd = new StringBuilder();
             StringBuilder links = new StringBuilder();
-            
             String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
+                // Obtenemos los datos asegurándonos de que no sean null
                 Long idProd = Long.parseLong(item.get("id").toString());
                 String nombre = (String) item.get("nombre");
-                String talla = (String) item.get("tallaSeleccionada");
+                String talla = (String) item.get("talla"); 
+                Integer cantidad = item.get("cantidad") != null ? Integer.parseInt(item.get("cantidad").toString()) : 1;
 
                 String tallaEncoded = URLEncoder.encode(talla, StandardCharsets.UTF_8);
 
-                listaProd.append("- ").append(nombre).append(" (Talla: ").append(talla).append(")\n");
+                // Texto para el cuerpo del correo
+                listaProd.append("- ").append(nombre)
+                         .append(" (Talla: ").append(talla)
+                         .append(") x").append(cantidad).append("\n");
                 
-                String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + tallaEncoded + "&cantidad=1";
+                // Link de deducción dinámico con la CANTIDAD real
+                String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + tallaEncoded + "&cantidad=" + cantidad;
                 
                 links.append("<div style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>")
-                     .append("<p><strong>Producto:</strong> ").append(nombre).append(" | <strong>Talla:</strong> ").append(talla).append("</p>")
+                     .append("<p><strong>Producto:</strong> ").append(nombre)
+                     .append(" | <strong>Talla:</strong> ").append(talla)
+                     .append(" | <strong>Cantidad:</strong> ").append(cantidad).append("</p>")
                      .append("<a href='").append(linkDeduccion).append("' style='background-color: #d9534f; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;'>")
-                     .append("🔻 Descontar 1 unidad</a>")
+                     .append("🔻 Confirmar y Descontar ").append(cantidad).append(" ud.</a>")
                      .append("</div>");
             }
 
@@ -195,6 +198,7 @@ public class ProductoController {
             
             return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
         } catch (Exception e) {
+            e.printStackTrace();
             return new ResponseEntity<>(Map.of("error", "Error al procesar la notificación: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -217,6 +221,7 @@ public class ProductoController {
             
             for (ProductoTalla pt : producto.getTallas()) {
                 if (pt.getTalla().trim().equalsIgnoreCase(tallaBuscada)) {
+                    // Restamos la cantidad solicitada
                     int nuevoStock = pt.getStock() - cantidad;
                     pt.setStock(Math.max(0, nuevoStock)); 
                     modificado = true;
@@ -230,21 +235,16 @@ public class ProductoController {
                 String htmlResponse = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
                         + "<h1 style='color: green; font-size: 50px;'>✅</h1>"
                         + "<h2>Stock actualizado correctamente</h2>"
-                        + "<p>Se descontó <strong>" + cantidad + "</strong> unidad(es) de:</p>"
+                        + "<p>Se descontaron <strong>" + cantidad + "</strong> unidad(es) de:</p>"
                         + "<h3>" + producto.getNombre() + " (Talla: " + tallaBuscada + ")</h3>"
                         + "<button onclick='window.close()' style='padding: 10px 20px; cursor: pointer;'>Cerrar ventana</button>"
                         + "</body></html>";
                 
                 return ResponseEntity.ok(htmlResponse);
             } else {
-                String htmlError = "<html><body style='font-family: Arial; text-align: center; margin-top: 50px;'>"
-                        + "<h1 style='color: red; font-size: 50px;'>❌</h1>"
-                        + "<h2>Error: Talla no encontrada</h2>"
-                        + "</body></html>";
-                return ResponseEntity.badRequest().body(htmlError);
+                return ResponseEntity.badRequest().body("<html><body><h1>❌ Error: Talla no encontrada</h1></body></html>");
             }
         }
-        
         return ResponseEntity.notFound().build();
     }
 }
