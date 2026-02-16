@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @RestController
@@ -159,7 +160,7 @@ public class ProductoController {
     }
 
     // ============================================
-    // 6. NOTIFICAR COMPRA (CORREGIDO PARA CANTIDADES)
+    // 6. NOTIFICAR COMPRA (CON ASUNTO ÚNICO)
     // ============================================
     @PostMapping("/productos/notificar-compra")
     public ResponseEntity<?> notificarCompra(@RequestBody List<Map<String, Object>> carrito) {
@@ -169,7 +170,9 @@ public class ProductoController {
             String baseUrl = "https://backendtienda-yx56.onrender.com"; 
 
             for (Map<String, Object> item : carrito) {
-                // Obtenemos los datos asegurándonos de que no sean null
+                // Validación para evitar NullPointerException si falta el ID
+                if (item.get("id") == null) continue;
+
                 Long idProd = Long.parseLong(item.get("id").toString());
                 String nombre = (String) item.get("nombre");
                 String talla = (String) item.get("talla"); 
@@ -177,12 +180,10 @@ public class ProductoController {
 
                 String tallaEncoded = URLEncoder.encode(talla, StandardCharsets.UTF_8);
 
-                // Texto para el cuerpo del correo
                 listaProd.append("- ").append(nombre)
                          .append(" (Talla: ").append(talla)
                          .append(") x").append(cantidad).append("\n");
                 
-                // Link de deducción dinámico con la CANTIDAD real
                 String linkDeduccion = baseUrl + "/api/admin/productos/descontar-stock?productoId=" + idProd + "&talla=" + tallaEncoded + "&cantidad=" + cantidad;
                 
                 links.append("<div style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>")
@@ -194,7 +195,11 @@ public class ProductoController {
                      .append("</div>");
             }
 
-            emailService.enviarNotificacionAdmin(listaProd.toString(), links.toString());
+            // Crear un asunto único con la hora actual para evitar agrupación en Gmail
+            String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
+            String asunto = "🛍️ Nuevo Pedido [" + time + "] - Confirmación de Stock";
+
+            emailService.enviarNotificacionAdmin(asunto, listaProd.toString(), links.toString());
             
             return ResponseEntity.ok(Map.of("mensaje", "Notificación enviada al administrador"));
         } catch (Exception e) {
@@ -221,7 +226,6 @@ public class ProductoController {
             
             for (ProductoTalla pt : producto.getTallas()) {
                 if (pt.getTalla().trim().equalsIgnoreCase(tallaBuscada)) {
-                    // Restamos la cantidad solicitada
                     int nuevoStock = pt.getStock() - cantidad;
                     pt.setStock(Math.max(0, nuevoStock)); 
                     modificado = true;
