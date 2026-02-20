@@ -33,6 +33,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Habilitar CORS explícitamente
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/public/ping").permitAll()
                 .requestMatchers("/uploads/**").permitAll() // Permitir ver fotos
                 .requestMatchers("/api/productos/**").permitAll() // Permitir ver productos
                 .requestMatchers("/api/admin/**").authenticated() // Solo admin puede guardar/borrar
