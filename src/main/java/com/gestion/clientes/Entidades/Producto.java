@@ -20,7 +20,7 @@ public class Producto {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
 
-    @Column(length = 30)
+    @Column(length = 100)
     private String color;
 
     @Column(length = 255)
