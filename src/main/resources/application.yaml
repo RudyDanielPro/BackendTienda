@@ -21,7 +21,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-    show-sql: true
+    show-sql: false
 
   servlet:
     multipart:
@@ -43,5 +43,5 @@ uploads:
 # Mapeamos las variables de entorno de Render a propiedades de Spring
 security:
   admin:
-    username: ${APP_ADMIN_USERNAME}      # Lee la variable de Render o usa 'admin' por defecto
-    password: ${APP_ADMIN_PASSWORD}   # Lee la variable de Render o usa 'admin123' por defecto
+    username: ${APP_ADMIN_USERNAME}      
+    password: ${APP_ADMIN_PASSWORD}   
