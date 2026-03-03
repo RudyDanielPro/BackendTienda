@@ -114,12 +114,13 @@ public class ProductoController {
     }
 
     // ============================================
-    // 5. SUBIR FOTO A CLOUDINARY
+    // 5. SUBIR FOTOS A CLOUDINARY (1 o 2 fotos)
     // ============================================
     @PostMapping("/admin/productos/{id}/upload")
     public ResponseEntity<?> subirFoto(
             @PathVariable Long id,
-            @RequestParam("archivo") MultipartFile archivo) {
+            @RequestParam(value = "archivo", required = false) MultipartFile archivo,
+            @RequestParam(value = "archivo2", required = false) MultipartFile archivo2) {
 
         try {
             Optional<Producto> productoOpt = productoRepository.findById(id);
@@ -127,37 +128,53 @@ public class ProductoController {
                 return new ResponseEntity<>(Map.of("error", "Producto no encontrado"), HttpStatus.NOT_FOUND);
             }
 
-            if (archivo.isEmpty()) {
-                return new ResponseEntity<>(Map.of("error", "El archivo está vacío"), HttpStatus.BAD_REQUEST);
+            if ((archivo == null || archivo.isEmpty()) && (archivo2 == null || archivo2.isEmpty())) {
+                return new ResponseEntity<>(Map.of("error", "Debes enviar al menos un archivo"), HttpStatus.BAD_REQUEST);
             }
-
-            Map<?, ?> result = cloudinaryService.upload(archivo);
-            String urlImagen = (String) result.get("secure_url");
 
             Producto producto = productoOpt.get();
-            ProductoFoto foto = producto.getFoto();
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("mensaje", "Proceso de fotos finalizado");
 
-            if (foto == null) {
-                foto = new ProductoFoto();
+            // --- PROCESAR FOTO 1 (Principal) ---
+            if (archivo != null && !archivo.isEmpty()) {
+                Map<?, ?> result = cloudinaryService.upload(archivo);
+                String urlImagen = (String) result.get("secure_url");
+
+                ProductoFoto foto = producto.getFoto();
+                if (foto == null) foto = new ProductoFoto();
+
+                foto.setRuta(urlImagen);
+                foto.setNombreArchivo(archivo.getOriginalFilename());
+                producto.setFoto(foto);
+                
+                responseData.put("urlFoto1", urlImagen);
             }
 
-            foto.setRuta(urlImagen);
-            foto.setNombreArchivo(archivo.getOriginalFilename());
+            // --- PROCESAR FOTO 2 (Secundaria y opcional) ---
+            if (archivo2 != null && !archivo2.isEmpty()) {
+                Map<?, ?> result = cloudinaryService.upload(archivo2);
+                String urlImagen2 = (String) result.get("secure_url");
 
-            producto.setFoto(foto);
+                ProductoFoto foto2 = producto.getFoto2();
+                if (foto2 == null) foto2 = new ProductoFoto();
+
+                foto2.setRuta(urlImagen2);
+                foto2.setNombreArchivo(archivo2.getOriginalFilename());
+                producto.setFoto2(foto2);
+
+                responseData.put("urlFoto2", urlImagen2);
+            }
+
             productoRepository.save(producto);
+            responseData.put("producto", producto); // Retornamos el producto actualizado
 
-            return new ResponseEntity<>(Map.of(
-                    "mensaje", "Foto subida con éxito",
-                    "url", urlImagen,
-                    "foto", foto), HttpStatus.CREATED);
+            return new ResponseEntity<>(responseData, HttpStatus.CREATED);
 
         } catch (IOException e) {
-            return new ResponseEntity<>(Map.of("error", "Error de E/S: " + e.getMessage()),
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(Map.of("error", "Error de E/S: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
-            return new ResponseEntity<>(Map.of("error", "Error general: " + e.getMessage()),
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(Map.of("error", "Error general: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

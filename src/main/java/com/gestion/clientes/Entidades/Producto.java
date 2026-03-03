@@ -26,18 +26,22 @@ public class Producto {
     @Column(length = 255)
     private String categoria;
 
-    // --- Único cambio: campo descripción ---
     @Column(length = 1000)
     private String descripcion;
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference // 👈 Mantenemos esto solo para las tallas
     private List<ProductoTalla> tallas = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "foto_id")
-    @JsonManagedReference // 👈 Envía los datos de la foto al Frontend
+    // Se quitó @JsonManagedReference porque ya ajustamos ProductoFoto.java
     private ProductoFoto foto;
+
+    // 👇 NUEVO: Segunda foto opcional
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "foto2_id")
+    private ProductoFoto foto2;
 
     public Producto() {}
 
@@ -61,19 +65,25 @@ public class Producto {
         talla.setProducto(null);
     }
 
-    // Getters y Setters
+    // ============================================
+    // GETTERS Y SETTERS
+    // ============================================
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
+
     public BigDecimal getPrecio() { return precio; }
     public void setPrecio(BigDecimal precio) { this.precio = precio; }
+
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
+
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
 
-    // --- Único cambio: Getter y Setter de descripción ---
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
@@ -82,9 +92,15 @@ public class Producto {
         this.tallas.clear();
         if (tallas != null) tallas.forEach(this::addTalla);
     }
+
     public ProductoFoto getFoto() { return foto; }
     public void setFoto(ProductoFoto foto) {
-        if (foto != null) foto.setProducto(this);
         this.foto = foto;
+    }
+
+    // 👇 NUEVO: Getters y Setters de la foto2
+    public ProductoFoto getFoto2() { return foto2; }
+    public void setFoto2(ProductoFoto foto2) {
+        this.foto2 = foto2;
     }
 }
