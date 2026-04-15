@@ -7,6 +7,10 @@ import com.gestion.clientes.Repositorios.ProductoRepository;
 import com.gestion.clientes.Servicios.CloudinaryService;
 import com.gestion.clientes.Servicios.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,11 +38,43 @@ public class ProductoController {
     private EmailService emailService;
 
     // ============================================
-    // 1. OBTENER TODOS LOS PRODUCTOS
+    // 1. OBTENER TODOS LOS PRODUCTOS (PAGINACIÓN POR ID - MÁXIMO 10 POR PÁGINA)
     // ============================================
     @GetMapping("/productos")
-    public List<Producto> listarProductos() {
-        return productoRepository.findAll();
+    public ResponseEntity<Map<String, Object>> listarProductosPaginados(
+            @RequestParam(defaultValue = "0") int page) {
+        
+        try {
+            // TAMAÑO FIJO: Máximo 10 productos por página
+            int size = 10;
+            
+            // SIEMPRE ordenado por ID ascendente
+            Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+            
+            // Obtener página de productos ordenados por ID
+            Page<Producto> pageProductos = productoRepository.findAll(pageable);
+            
+            // Crear respuesta estructurada con metadatos de paginación
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("content", pageProductos.getContent());
+            response.put("pageNumber", pageProductos.getNumber());
+            response.put("pageSize", pageProductos.getSize());
+            response.put("totalElements", pageProductos.getTotalElements());
+            response.put("totalPages", pageProductos.getTotalPages());
+            response.put("last", pageProductos.isLast());
+            response.put("first", pageProductos.isFirst());
+            response.put("empty", pageProductos.isEmpty());
+            response.put("nextPage", pageProductos.isLast() ? null : page + 1);
+            response.put("previousPage", pageProductos.isFirst() ? null : page - 1);
+            response.put("currentPageItems", pageProductos.getNumberOfElements());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error al obtener productos paginados: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
     // ============================================
@@ -167,7 +203,7 @@ public class ProductoController {
             }
 
             productoRepository.save(producto);
-            responseData.put("producto", producto); // Retornamos el producto actualizado
+            responseData.put("producto", producto);
 
             return new ResponseEntity<>(responseData, HttpStatus.CREATED);
 
@@ -189,7 +225,6 @@ public class ProductoController {
             String baseUrl = "https://backendtienda-yx56.onrender.com";
 
             for (Map<String, Object> item : carrito) {
-                // Validación para evitar NullPointerException si falta el ID
                 if (item.get("id") == null)
                     continue;
 
@@ -217,7 +252,6 @@ public class ProductoController {
                         .append("</div>");
             }
 
-            // Crear un asunto único con la hora actual para evitar agrupación en Gmail
             String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
             String asunto = "🛍️ Nuevo Pedido [" + time + "] - Confirmación de Stock";
 
@@ -276,6 +310,9 @@ public class ProductoController {
         return ResponseEntity.notFound().build();
     }
 
+    // ============================================
+    // 8. PING (VERIFICACIÓN DE ESTADO DEL SERVIDOR)
+    // ============================================
     @GetMapping("/public/ping")
     public ResponseEntity<String> ping() {
         return new ResponseEntity<>("Pong - Server is up", HttpStatus.OK);
